@@ -1,0 +1,125 @@
+do{ my $x = [
+       {
+         'ARGV' => []
+       },
+       {},
+       {
+         'allow_pureperl' => 0,
+         'configure_requires' => {
+                                   'Module::Build' => 0
+                                 },
+         'install_sets' => {},
+         'magic_number' => undef,
+         'recommends' => {},
+         'has_config_data' => undef,
+         'extra_compiler_flags' => [],
+         'build_requires' => {
+                               'Test::More' => 0
+                             },
+         '_added_to_INC' => [],
+         'dynamic_config' => 1,
+         'test_files' => undef,
+         'create_license' => undef,
+         'license' => 'artistic_2',
+         'prefix_relpaths' => {},
+         'needs_compiler' => '',
+         'tap_harness_args' => {},
+         'perl' => '/util/academic/perl/5.20.2/bin/perl',
+         'dist_name' => 'NGS-Tools-GATK',
+         'PL_files' => undef,
+         'orig_dir' => '/user/jw24/Git/NGS-Tools-GATK',
+         'recursive_test_files' => undef,
+         'config' => undef,
+         'prefix' => undef,
+         'quiet' => undef,
+         'install_base_relpaths' => {},
+         'mb_version' => '0.4205',
+         'install_path' => {},
+         'build_script' => 'Build',
+         'create_readme' => undef,
+         'debugger' => undef,
+         'verbose' => undef,
+         'create_packlist' => 1,
+         'cpan_client' => 'cpan',
+         'debug' => undef,
+         'build_class' => 'Module::Build',
+         'pollute' => undef,
+         'pod_files' => undef,
+         'dist_author' => [
+                            'Jianxin Wang <jw24@buffalo.edu>'
+                          ],
+         'mymetafile' => 'MYMETA.yml',
+         'requires' => {},
+         'use_tap_harness' => 0,
+         'blib' => 'blib',
+         'mymetafile2' => 'MYMETA.json',
+         'build_elements' => [
+                               'PL',
+                               'support',
+                               'pm',
+                               'xs',
+                               'share_dir',
+                               'pod',
+                               'script'
+                             ],
+         'xs_files' => undef,
+         'meta_merge' => {},
+         'extra_linker_flags' => [],
+         'scripts' => undef,
+         'script_files' => undef,
+         'allow_mb_mismatch' => 0,
+         'build_bat' => 0,
+         'destdir' => undef,
+         'dist_version' => '0.05',
+         'autosplit' => undef,
+         'meta_add' => {},
+         'module_name' => 'NGS::Tools::GATK',
+         'base_dir' => '/user/jw24/Git/NGS-Tools-GATK',
+         'dist_version_from' => 'lib/NGS/Tools/GATK.pm',
+         'original_prefix' => {},
+         'c_source' => undef,
+         'html_css' => '',
+         'get_options' => {},
+         'include_dirs' => [],
+         'release_status' => 'stable',
+         'recurse_into' => [],
+         'dist_suffix' => undef,
+         'use_rcfile' => 1,
+         'bindoc_dirs' => [
+                            'blib/script'
+                          ],
+         'libdoc_dirs' => [
+                            'blib/lib',
+                            'blib/arch'
+                          ],
+         'bundle_inc' => [],
+         'auto_configure_requires' => 1,
+         'extra_manify_args' => undef,
+         'dist_abstract' => undef,
+         'conflicts' => {},
+         'test_requires' => {},
+         'metafile' => 'META.yml',
+         'test_file_exts' => [
+                               '.t'
+                             ],
+         'create_makefile_pl' => 'traditional',
+         'metafile2' => 'META.json',
+         'pm_files' => undef,
+         'install_base' => undef,
+         'pureperl_only' => 0,
+         'program_name' => undef,
+         'installdirs' => 'site',
+         'sign' => undef,
+         'prereq_action_types' => [
+                                    'requires',
+                                    'build_requires',
+                                    'test_requires',
+                                    'conflicts',
+                                    'recommends'
+                                  ],
+         'config_dir' => '_build',
+         'bundle_inc_preload' => [],
+         'share_dir' => undef
+       }
+     ];
+$x; }

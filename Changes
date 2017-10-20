@@ -1,0 +1,5 @@
+Revision history for NGS-Tools-GATK
+
+0.01    2015-05-20
+        First version
+0.05    2016-10-20, updated to use GATK v3.6, skipped indel realignment

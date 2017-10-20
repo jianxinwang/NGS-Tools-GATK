@@ -1,0 +1,339 @@
+#!/usr/bin/env perl
+
+### GATK.pl ##############################################################################
+# Run the Genome Analysis Toolkit pipeline.
+
+### INCLUDES ######################################################################################
+use warnings;
+use strict;
+use Carp;
+use Getopt::Long;
+use Pod::Usage;
+use Path::Class;
+use File::Path;
+use File::Spec;
+use File::Basename;
+use YAML qw(LoadFile);
+use NGS::Tools::GATK;
+
+
+### COMMAND LINE DEFAULT ARGUMENTS ################################################################
+our %opts = (
+    debug              => 'N',
+    gatk_version       => '3.3.0',    # set default version
+    run_variant_caller => 'Y',
+    Pre_processing     => 'Y',
+    phaseI             => 'Y',
+    phaseII            => 'Y',
+    phaseIII           => 'Y',
+    indel_realigner_target_creator => 'Y',
+    indel_realigner                => 'Y',
+    create_recalibration_table     => 'Y',
+    print_reads                    => 'Y',
+    samtools_reheader              => 'Y',
+    merge_raw_vcf                  => 'Y',
+    merge_bam_files                => 'Y',
+    variant_recalibrator           => 'Y',
+    apply_recalibration            => 'Y',
+    combine_gvcf_by_chr            => 'Y',
+    combine_gvcf_all_chr           => 'Y',
+    genotype_gvcf                  => 'Y',
+    ts_filter_level                => 99.0,
+    split_vcf                      => 'Y',
+    ref                            => '/util/ccr/data/Broad/gatk_bundle/2.8/human_g1k_v37_decoy.fasta',
+    dbsnp                          => '/util/ccr/data/Broad/gatk_bundle/2.8/dbsnp_138.b37.vcf',
+    indels                         => '/util/ccr/data/Broad/gatk_bundle/2.8/dbsnp_138.b37.vcf',
+    hapmap                         => '/util/ccr/data/Broad/gatk_bundle/2.8/hapmap_3.3.b37.vcf',
+    omni                           => '/util/ccr/data/Broad/gatk_bundle/2.8/1000G_omni2.5.b37.vcf',
+    g1k_snp                        => '/util/ccr/data/Broad/gatk_bundle/2.8/1000G_phase1.snps.high_confidence.b37.vcf',
+    g1k_indel                      => '/util/ccr/data/Broad/gatk_bundle/2.8/1000G_phase1.indels.b37.vcf',
+    mills                          => '/util/ccr/data/Broad/gatk_bundle/2.8/Mills_and_1000G_gold_standard.indels.b37.vcf',
+    modules                        => 'samtools,java/1.8.0_45,vcftools,picard/1.131,R/3.2.0'
+);
+
+GetOptions(
+    \%opts,
+    "help|?",
+    "man",
+    "gatk_version|v:s" => \$opts{'gatk_version'},
+    "run_id:s",
+    "config|c:s",
+    "output_dir:s",
+    "debug:s"                          => \$opts{'debug'},
+    "ref|r:s"                          => \$opts{'ref'},
+    "dbsnp:s"                            => \$opts{'dbsnp'},
+    "indels:s"                           => \$opts{'indels'},
+    "hapmap:s"                           => \$opts{'hapmap'},
+    "omni:s"                             => \$opts{'omni'},
+    "g1k_snp:s"                          => \$opts{'g1k_snp'},
+    "g1k_indel:s"                        => \$opts{'g1k_indel'},
+    "mills"                              => \$opts{'mills'},
+    "modules:s"                        => \$opts{'modules'},
+    "phaseI"                            => \$opts{'phaseI'},
+    "phaseII"                          => \$opts{'phaseII'},
+    "phaseIII"                          => \$opts{'phaseIII'},
+    "indel_realigner_target_creator:s" => \$opts{'indel_realigner_target_creator'},
+    "indel_realigner:s"                => \$opts{'indel_realigner'},
+    "create_recalibration_table:s"     => \$opts{'create_recalibration_table'},
+    "print_reads:s"                    => \$opts{'print_reads'},
+    "samtools_reheader:s"              => \$opts{'samtools_reheader'},
+    "merge_bam_files:s"                => \$opts{'merge_bam_files'},
+    "combine_gvcf_by_chr:s"            => \$opts{'combine_gvcf_by_chr'},
+    "combine_gvcf_all_chr:s"           => \$opts{'combine_gvcf_all_chr'},
+    "run_variant_caller:s"             => \$opts{'run_variant_caller'},
+    "genotype_gvcf:s"                  => \$opts{'genotype_gvcf'},
+    "ts_filter_level:s"                => \$opts{'ts_filter_level'},
+    "merge_raw_vcf:s"                  => \$opts{'merge_raw_vcf'},
+    "variant_recalibrator:s"           => \$opts{'variant_recalibrator'},
+    "apply_recalibration:s"            => \$opts{'apply_recalibration'}
+) or pod2usage(2);
+GetOptions();
+
+####################################################################################################
+# Check commandline sanity
+####################################################################################################
+if ( !$opts{'config'} or !$opts{'output_dir'} or !$opts{'run_id'} ) {
+    pod2usage(1);
+}
+
+if ( $opts{'help'} ) { pod2usage(1) }
+if ( $opts{'man'} ) { pod2usage( -exitstatus => 0, -verbose => 2 ) }
+
+my @list_of_modules = split( /\,/, $opts{'modules'} );
+push @list_of_modules, 'gatk/' . $opts{'gatk_version'};
+
+# Load the config yaml file
+my ($config, $config2);
+if ( $opts{'config'} ) {
+    $config = LoadFile( $opts{'config'} );
+
+    # add a groups key at top level and make each group contains 10 samples
+    my $group = 0;
+    my $count = 0;
+    foreach my $patient (sort keys %{$config}){
+        $config2->{$group}->{$patient} = $config->{$patient};
+        $count++;
+        if ($count % 10 == 0){ # set the approperate group size so the cluster can handle the big files
+            $group++;
+        }
+    }
+}
+else {
+    croak "Config yaml file not found. Please check your commandline\n";
+}
+
+####################################################################################################
+# Root directories to store output files
+####################################################################################################
+my $gatk_version  = $opts{'gatk_version'};
+my $parent_dir    = File::Spec->rel2abs( $opts{'output_dir'} );
+my $phaseI_root   = $parent_dir . '/phaseI_' . $gatk_version;
+my $phaseII_root  = $parent_dir . '/phaseII_' . $gatk_version;
+my $phaseIII_root = $parent_dir . '/phaseIII_' . $gatk_version;
+
+my $gatk = NGS::Tools::GATK->new(
+    bam              => $config,
+    bam_group             => $config2,
+    #sample           => $opts{'run_id'},
+    #run_id           => $opts{'run_id'},
+    config           => $config,
+    config2          => $config2,
+    opts             => \%opts,
+    phaseI_root      => $phaseI_root,
+    phaseII_root     => $phaseII_root,
+    phaseIII_root    => $phaseIII_root,
+    modules => \@list_of_modules,
+#    reference        => $opts{'ref'},
+    #dbsnp            => $opts{'dbsnp'},
+    #   ref_type         => $opts{'ref_type'},
+    #knownsites       => $opts{'indels'}
+);
+
+####################################################################################################
+# Prepare directories for output files
+####################################################################################################
+# Switch to working directory
+chdir($parent_dir);
+
+# Initialize directory structure
+my $gatk2 = $gatk->dir_structure();
+
+foreach my $phasedir ( 'phaseI', 'phaseII', 'phaseIII' ) {
+    my $phaseroot = $parent_dir . '/' . $phasedir . '_' . $gatk_version;
+    File::Path::make_path( File::Spec->rel2abs($phaseroot) );
+    chdir( File::Spec->rel2abs($phaseroot) ) or croak "$!";
+
+    my @phase_dirs = values %{ $gatk2->dir->{$phasedir} };
+    File::Path::make_path(@phase_dirs);
+
+    # Switch back to parent dir
+    chdir( File::Spec->rel2abs($parent_dir) ) or croak "$!";
+}
+
+# Fill in the sample_names to the $gatk2 object
+my $sample_names = $gatk2->get_sample_name_from_bam();
+
+# Create index for the input bam files if not yet indexed
+my $index_bam = $sample_names->run_index_bams();
+
+####################################################################################################
+# GATK phase I, indel realigner and base quality recalibration
+####################################################################################################
+
+my $indel_realigner_target_creator = $index_bam->run_indel_realigner_target_creator();
+
+my $indel_realigner = $indel_realigner_target_creator->run_indel_realigner();
+
+my $base_recalibration = $indel_realigner->run_base_recalibration();
+
+my $recalibrated_bam = $base_recalibration->create_recalibrated_bams();
+
+### merge the recalibrated bams (not for down stream variant calling, but it may be useful for other purposes)
+
+if ( $recalibrated_bam->opts->{'merge_bam_files'} eq 'Y' ) {
+    $recalibrated_bam->merge_by_sample();
+}
+else {
+    print "MergeBamFiles will not be performed!!\n";
+}
+
+my $reheadered_bam = $recalibrated_bam->reheader_bam_file();
+
+####################################################################################################
+# GATK phase II, variant calling
+####################################################################################################
+
+# make variant calls with HaplotypeCaller
+
+my $htc          = $reheadered_bam->run_haplotype_caller();
+my $combine_gvcf = $htc->run_combine_gvcfs();
+my $variant_for_recalibration = $combine_gvcf->run_genotype_gvcf();
+
+####################################################################################################
+# GATK phaseIII, variant recalibration
+####################################################################################################
+
+my $snp_recalibration              = $variant_for_recalibration->run_variant_recalibrator('snp');
+my $apply_variant_recalibrator_snp = $snp_recalibration->run_apply_recalibration('snp');
+
+my $indel_recalibration               = $apply_variant_recalibrator_snp->run_variant_recalibrator('indel');
+my $apply_variant_recalibration_indel = $indel_recalibration->run_apply_recalibration('indel');
+
+# split the multi-sample vcf by samples, i.e.  case/control pair or case only if no control available
+my $gatk_split_vcf = $apply_variant_recalibration_indel->split_vcf();
+
+# if we reach here, everything is ok
+print "GATK pipeline all started running...\n";
+
+exit;
+
+__END__
+
+
+=head1 NAME
+
+GATK.pl
+
+=head1 SYNOPSIS
+
+B<GATK.pl> [options] <--config> <--run_id> <--output_dir>
+
+	Arguments:
+	--config				A YAML file containing BAM files and sample names for processing
+	--run_id				A name/ID for this GATK run, suggest to use the project, dataset or cohort name
+	--output_dir				Output directory (for example: /scratch2/user/your_user_name).
+	
+	Options:
+	--help					Brief help message
+	--man					Full documentation
+	--gatk_version				Version of the GATK program, e.g. "3.3.0", "2.4.9", etc.
+	--ref					Path for reference genome fasta file (default:hg19)
+	--indels				Insertion/deletion file in VCF format
+	--dbsnp					dbSNP file in VCF format
+	--ref_type				Reference genome (default:hg19) Other acceptable reference genome is b37 from the broad institute
+	--indel_realigner_target_creator	Perform RealingerTargetCreator (default:Y)
+	--indel_realigner			Perform IndelReaglinger (default:Y)
+	--create_recalibration_table		Perform CreateRecalibrationTable (default:Y)
+	--print_reads				Perfrom PrintReads (default:Y)
+	--samtools_reheader			Perform samtools reheader (default:Y)
+	--Pre_processing			Perform BAM processing (default:Y)
+	--SNP_calling				Perform SNP calling (default:Y)
+	--merge_raw_vcf				Perfrom MergeRawVcf (default:Y)
+	--variant_recalibrator			Perfrom VariantRecalibrator (default:Y)
+	--apply_recalibration			Perfrom ApplyRecalibration (default:Y)
+
+	Examples:
+	
+	### Simple case, assuming everying will run smoothly and the default values are fine to you:
+	perl GATK.pl --config tumour_normal_paried.yaml --output_dir /scratch2/user/jwang/TEST --gatk_version 3.3.0 --variant_caller HC --run_id POPCURE
+	
+	### Assume the pipeline failed at the step of indexing recalibrated and reheadered bams due to insuficient memory
+	### for some high read-depth/coverage bams. You have edited the corresponding script files to increase
+	### memory requirement. You can resume your run by this command:
+	perl GATK.pl --config tumour_only.yaml --output_dir /scratch2/user/jwang/TEST \
+		--gatk_version 2.4.9 --variant_caller UG --run_id CPC_GENE
+		--indel_realigner_target_creator N  --indel_realigner N \
+		--create_recalibration_table N
+	
+	### Assume some jobs failed at the stage of variant calling. You identified the cause
+	### and fixed the problem. Now you can resume the run and skipping the GATK phase I runs:
+	perl GATK.pl --config tumour_only.yaml --output_dir /scratch2/user/jwang/TEST \
+		--gatk_version 3.3.0 --variant_caller UG --run_id CPC_GENE --Pre_processing N
+	
+=head1 OPTIONS
+
+=over 8
+
+=item B<--help>
+
+Print a brief help message and exit.
+
+=item B<--man>
+
+Print the manual page.
+
+=item B<--config>
+
+Config YAML file containing samples with corresponding BAM file locations
+
+=item B<--sample>
+
+Name for a job of the GATK pipeline
+
+=item B<--dir>
+
+Output directory name. /scratch/user/ is recommended because this GATK script can generated a few TB of intermediate files if your sample is whole gneome sequencing data.
+
+=item B<--ref>
+
+Path for reference genome fasta file. Default is the path for the b37_decoy reference genome.
+
+=item B<--ref_type>
+
+Reference genome (default:b37_decoy, from Broad Institute, used in 1kg phaseII)
+
+=item B<--pre_processing>
+
+Perform BAM processing including RealignerTargetCreator, IndelRealigner, BaseRecalibrator, PrintReads, and merging and indexing BAM files using Picard.
+(default:Y)
+
+=item B<--SNP_calling>
+
+Perform SNP calling including HaplotypeCaller or UnifiedGenotyper, VariantRecalibrator, ApplyRecalibration, and merging VCF files. (default:Y)
+
+=back
+
+=head1 DESCRIPTION
+
+B<GATK.pl> Run the Genome Analysis Toolkit pipeline.
+
+=head1 AUTHOR
+
+Jianxin Wang
+
+Center for Computational Research, University at Buffalo
+
+=head1 SEE ALSO
+
+=cut
+

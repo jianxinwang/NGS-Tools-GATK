@@ -1,0 +1,5 @@
+do{ my $x = {
+       'NGS-Tools-GATK-*' => 1,
+       'blib' => 1
+     };
+$x; }
