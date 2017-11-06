@@ -33,14 +33,13 @@ our %opts = (
     variant_recalibrator       => 'Y',
     apply_recalibration        => 'Y',
     ref                        => '/gpfs/scratch/jw24/GATK/gatk_bundle/2.8/human_g1k_v37_decoy.fasta',
-    dbsnp                      => '/gpfs/scratch/jw24/GATK/gatk_bundle/2.8/dbsnp_138.b37.vcf',
-    indels                     => '/gpfs/scratch/jw24/GATK/gatk_bundle/2.8/dbsnp_138.b37.vcf',
-    hapmap                     => '/gpfs/scratch/jw24/GATK/gatk_bundle/2.8/hapmap_3.3.b37.vcf',
+    dbsnp                      => '/gpfs/scratch/jw24/GATK/gatk_bundle/2.8/dbsnp_138.b37.vcf.gz',
+    indels                     => '/gpfs/scratch/jw24/GATK/gatk_bundle/2.8/dbsnp_138.b37.vcf.gz',
+    hapmap                     => '/gpfs/scratch/jw24/GATK/gatk_bundle/2.8/hapmap_3.3.b37.vcf.gz',
     omni                       => '/gpfs/scratch/jw24/GATK/gatk_bundle/2.8/1000G_omni2.5.b37.vcf',
-    g1k_snp                    => '/gpfs/scratch/jw24/GATK/gatk_bundle/2.8/1000G_phase1.snps.high_confidence.b37.vcf',
-    g1k_indel                  => '/gpfs/scratch/jw24/GATK/gatk_bundle/2.8/1000G_phase1.indels.b37.vcf',
-    mills                      => '/gpfs/scratch/jw24/GATK/gatk_bundle/2.8/Mills_and_1000G_gold_standard.indels.b37.vcf'
-#    modules                    => 'samtools,java/1.8.0_45,vcftools,picard/2.2.1,R/3.2.0'
+    g1k_snp                    => '/gpfs/scratch/jw24/GATK/gatk_bundle/2.8/1000G_phase1.snps.high_confidence.b37.vcf.gz',
+    g1k_indel                  => '/gpfs/scratch/jw24/GATK/gatk_bundle/2.8/1000G_phase1.indels.b37.vcf.gz',
+    mills                      => '/gpfs/scratch/jw24/GATK/gatk_bundle/2.8/Mills_and_1000G_gold_standard.indels.b37.vcf.gz'
 );
 
 GetOptions(
