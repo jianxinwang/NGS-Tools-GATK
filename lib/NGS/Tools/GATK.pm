@@ -388,13 +388,13 @@ sub get_gatk_options {
 
     if ( defined $walker ) {
         if ( $walker eq 'PrintReads' ) {
-            $nct  = 8;
-            $mem  = 24_000;
+            $nct  = 1;
+            $mem  = 16_000;
             $time = '20:00:00';
         }
         elsif ( $walker eq 'HaplotypeCaller' ) {
             $nct  = 6;
-            $mem  = 48_000;
+            $mem  = 32_000;
             $time = '72:00:00';
         }
         elsif ( $walker eq 'SelectVariants' ) {
@@ -418,16 +418,16 @@ sub get_gatk_options {
             $mem  = 48_000;
         }
         elsif ( $walker eq 'BaseRecalibrator' ) {
-            $nct  = 12;
-            $mem  = 48_000;
-            $time = '05:00:00';
+            $nct  = 8;
+            $mem  = 32_000;
+            $time = '10:00:00';
         }
     }
     elsif ( defined $step ) {
         if ( $step eq 'create_recalibrated_bam' ) {
             $time = '30:00:00';
             $nt   = 12;
-            $mem  = 24_000;
+            $mem  = 12_000;
         }
     }
     $rv->{'nt'}        = $nt;
@@ -783,62 +783,64 @@ sub run_base_recalibration {
     my $gatk_options = $self->get_gatk_options( walker => 'BaseRecalibrator' );
 
     foreach my $donor ( sort keys %{ $self->config } ) {
-        my $sample_id   = $self->config->{$donor}->{'case'}->{'ID'};
-        my $input_bam   = $self->config->{$donor}->{'case'}->{'path'};
-        my $output_file = join( '_', $self->opts->{'run_id'}, $sample_id, 'recalibration_table.grp' );
-        my $output_dir  = join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'recalibration_table'} );
-        $output_file = join( '/', $output_dir, $output_file );
-
-        my $commandline = $self->make_commandline(
-            walker     => 'BaseRecalibrator',
-            input      => "-I " . $input_bam,
-            covariates => $self->covariates,
-            nct        => $gatk_options->{'nct'},
-            nt         => 1,
-            memory     => $gatk_options->{'mem'},
-            output     => $output_file,
-        );
-
-        my $jobname_base_recalibration = join( '_', 'BQR', $sample_id, $self->opts->{'run_id'} );
-        my $scriptname_base_recalibration = 'slurm_' . $jobname_base_recalibration . ".sh";
-        my $slurm_jobid_crt;
-
-        if ( $self->opts->{'create_recalibration_table'} eq 'Y' ) {
-            $slurm_jobid_crt = CCR::Utilities::General::create_submit_slurm_job(
-                debug      => $self->opts->{'debug'},
-                account    => $self->opts->{'account'},
-                email      => $self->opts->{'email'} || $self->opts->{'user'}. '@buffalo.edu',
-                sendemail  => $self->opts->{'sendemail'},
-                partition  => $self->opts->{'partition'},
-                qos        => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'qos'},
-                cluster    => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'cluster'},
-                script     => $scriptname_base_recalibration,
-                command    => $commandline,
-                script_dir => join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'script_recalibration_table'} ),
-                modules    => "java/1.8.0_45,gatk/" . $self->opts->{'gatk_version'},
-                job_name   => $jobname_base_recalibration,
-                time       => $gatk_options->{'time'},
-                nodes      => 1,
-                memory     => $gatk_options->{'mem'},
-                ntasks_per_node => $gatk_options->{'nct'},
-                dependency      => 'none',
-                output          => join( '/',
-                    $self->phaseI_root, $self->dir->{'phaseI'}->{'log_recalibration_table'},
-                    $jobname_base_recalibration )
-            );
-
-            $jobids_base_recalib->{$sample_id} = $slurm_jobid_crt;
-        }
-        else {
-            print "BaseQualRecalibration will not be performed!!\n";
-        }
-
-        $recal_tables->{$sample_id} = $output_file;
-    }
-
-    $self->set_jobid_base_recalibration($jobids_base_recalib) if ($jobids_base_recalib);
-    $self->set_recalibration_table($recal_tables);
-    $self;
+		foreach my $sample_type (qw(case control)) {
+	        my $sample_id   = $self->config->{$donor}->{$sample_type}->{'ID'};
+			next if (! $sample_id); # the specific $smaple_type does exist, so skip
+	        my $input_bam   = $self->config->{$donor}->{$sample_type}->{'path'};
+	        my $output_file = join( '_', $self->opts->{'run_id'}, $sample_id, 'recalibration_table.grp' );
+	        my $output_dir  = join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'recalibration_table'} );
+	        $output_file = join( '/', $output_dir, $output_file );
+	
+	        my $commandline = $self->make_commandline(
+	            walker     => 'BaseRecalibrator',
+	            input      => "-I " . $input_bam,
+	            covariates => $self->covariates,
+	            nct        => $gatk_options->{'nct'},
+	            nt         => 1,
+	            memory     => $gatk_options->{'mem'},
+	            output     => $output_file,
+	        );
+	
+	        my $jobname_base_recalibration = join( '_', 'BQR', $sample_id, $self->opts->{'run_id'} );
+	        my $scriptname_base_recalibration = 'slurm_' . $jobname_base_recalibration . ".sh";
+	        my $slurm_jobid_crt;
+	
+	        if ( $self->opts->{'create_recalibration_table'} eq 'Y' ) {
+	            $slurm_jobid_crt = CCR::Utilities::General::create_submit_slurm_job(
+	                debug      => $self->opts->{'debug'},
+	                account    => $self->opts->{'account'},
+	                email      => $self->opts->{'email'} || $self->opts->{'user'}. '@buffalo.edu',
+	                sendemail  => $self->opts->{'sendemail'},
+	                partition  => $self->opts->{'partition'},
+	                qos        => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'qos'},
+	                cluster    => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'cluster'},
+	                script     => $scriptname_base_recalibration,
+	                command    => $commandline,
+	                script_dir => join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'script_recalibration_table'} ),
+	                modules    => "java/1.8.0_45,gatk/" . $self->opts->{'gatk_version'},
+	                job_name   => $jobname_base_recalibration,
+	                time       => $gatk_options->{'time'},
+	                nodes      => 1,
+	                memory     => $gatk_options->{'mem'},
+	                ntasks_per_node => $gatk_options->{'nct'},
+	                dependency      => 'none',
+	                logfile          => join( '/',
+	                    $self->phaseI_root, $self->dir->{'phaseI'}->{'log_recalibration_table'},
+	                    $jobname_base_recalibration )
+	            );
+	
+	            $jobids_base_recalib->{$sample_id} = $slurm_jobid_crt;
+	        }
+	        else {
+	            print "BaseQualRecalibration will not be performed!!\n";
+	        }
+	
+	        $recal_tables->{$sample_id} = $output_file;
+	    	$self->set_jobid_base_recalibration($jobids_base_recalib) if ($jobids_base_recalib);
+	    	$self->set_recalibration_table($recal_tables);
+		}
+	}
+	$self;
 }
 
 sub create_recalibrated_bams {
@@ -846,76 +848,78 @@ sub create_recalibrated_bams {
     my $jobids_create_recalibrated_bam;
     my $jobname_create_recalibrated_bam;
     my $recalibrated_bams;
-
     my $gatk_options = $self->get_gatk_options( step => 'create_recalibrated_bam' );
 
     foreach my $donor ( sort keys %{ $self->config } ) {
-        my $sample_id = $self->config->{$donor}->{'case'}->{'ID'};
-        my $input_bam = $self->config->{$donor}->{'case'}->{'path'};
-
-        my $dir = join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'intermediate_bam_files'} );
-        my $output_file = join( '.', $sample_id, 'recalibrated', $self->opts->{'run_id'}, 'bam' );
-        $output_file = join( '/', $dir, $output_file );
-
-        # make commandline for slurm script
-        my $commandline = $self->make_commandline(
-            walker      => 'PrintReads',
-            step        => 'create_recalibrated_bam',
-            input       => "-I " . $input_bam,
-            output      => $output_file,
-            table       => $self->recalibration_table->{$sample_id},
-            sample_name => $sample_id,
-            nct         => $gatk_options->{'nct'},
-            memory      => $gatk_options->{'mem'}
-        );
-
-        my $scriptname_create_recalibrated_bam =
-          join( '_', 'slurm', 'BaseQualityRecalibratedBam', $sample_id, $self->opts->{'run_id'} . "\.sh" );
-        my $jobname_create_recalibrated_bam = join( '_', 'BQRB', $sample_id, $self->opts->{'run_id'} );
-
-        my $slurm_jobid_create_recalibrated_bam;
-        my $dependency = 'none';
-        if ( $self->opts->{'create_recalibration_table'} eq 'Y' ) {
-            $dependency = $self->jobid_base_recalibration->{$sample_id};
-        }
-
-        if ( $self->opts->{'create_recalibrated_bam'} eq 'Y' ) {
-            $slurm_jobid_create_recalibrated_bam = CCR::Utilities::General::create_submit_slurm_job(
-                debug     => $self->opts->{'debug'},
-                account   => $self->opts->{'account'},
-                email     => $self->opts->{'email'} || $self->opts->{'user'}. '@buffalo.edu',
-                sendemail => $self->opts->{'sendemail'},
-                partition => $self->opts->{'partition'},
-                qos       => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'qos'},
-                cluster   => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'cluster'},
-                script    => $scriptname_create_recalibrated_bam,
-                command   => $commandline,
-                script_dir =>
-                  join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'script_create_recalibrated_bam'} ),
-                modules         => "java/1.8.0_45,gatk/" . $self->opts->{'gatk_version'},
-                job_name        => $jobname_create_recalibrated_bam,
-                time            => $gatk_options->{'time'},
-                nodes           => 1,
-                memory          => $gatk_options->{'mem'},                                  #12000,
-                ntasks_per_node => $gatk_options->{'nct'},                                  #4,
-                dependency      => $dependency,
-                output          => join( '/',
-                    $self->phaseI_root, $self->dir->{'phaseI'}->{'log_create_recalibrated_bam'},
-                    $jobname_create_recalibrated_bam )
-            );
-        }
-        else {
-            print "PrintReads will not be performed!!\n";
-        }
-
-        $recalibrated_bams->{$sample_id} = $output_file;
-
-        $jobids_create_recalibrated_bam->{$sample_id} = $slurm_jobid_create_recalibrated_bam
-          if ( defined $slurm_jobid_create_recalibrated_bam );
-    }
-
-    $self->set_recalibrated_bams($recalibrated_bams);
-    $self->set_jobids_print_recalibrated_bam($jobids_create_recalibrated_bam);
+		foreach my $sample_type (qw(case control) ) {
+	        my $sample_id = $self->config->{$donor}->{$sample_type}->{'ID'};
+			next if (! $sample_id);
+	        my $input_bam = $self->config->{$donor}->{$sample_type}->{'path'};
+	
+	        my $dir = join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'intermediate_bam_files'} );
+	        my $output_file = join( '_', $self->opts->{'run_id'}, $sample_id, 'recalibrated.bam' );
+	        $output_file = join( '/', $dir, $output_file );
+	
+	        # make commandline for slurm script
+	        my $commandline = $self->make_commandline(
+	            walker      => 'PrintReads',
+	            step        => 'create_recalibrated_bam',
+	            input       => "-I " . $input_bam,
+	            output      => $output_file,
+	            table       => $self->recalibration_table->{$sample_id},
+	            sample_name => $sample_id,
+	            nct         => $gatk_options->{'nct'},
+	            memory      => $gatk_options->{'mem'}
+	        );
+	
+	        my $scriptname_create_recalibrated_bam =
+	          join( '_', 'slurm', 'BaseQualityRecalibratedBam', $sample_id, $self->opts->{'run_id'} . "\.sh" );
+	        my $jobname_create_recalibrated_bam = join( '_', 'BQRB', $sample_id, $self->opts->{'run_id'} );
+	
+	        my $slurm_jobid_create_recalibrated_bam;
+	        my $dependency = 'none';
+	        if ( $self->opts->{'create_recalibration_table'} eq 'Y' ) {
+	            $dependency = $self->jobid_base_recalibration->{$sample_id};
+	        }
+	
+	        if ( $self->opts->{'create_recalibrated_bam'} eq 'Y' ) {
+	            $slurm_jobid_create_recalibrated_bam = CCR::Utilities::General::create_submit_slurm_job(
+	                debug     => $self->opts->{'debug'},
+	                account   => $self->opts->{'account'},
+	                email     => $self->opts->{'email'} || $self->opts->{'user'}. '@buffalo.edu',
+	                sendemail => $self->opts->{'sendemail'},
+	                partition => $self->opts->{'partition'},
+	                qos       => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'qos'},
+	                cluster   => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'cluster'},
+	                script    => $scriptname_create_recalibrated_bam,
+	                command   => $commandline,
+	                script_dir =>
+	                  join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'script_create_recalibrated_bam'} ),
+	                modules         => "java/1.8.0_45,gatk/" . $self->opts->{'gatk_version'},
+	                job_name        => $jobname_create_recalibrated_bam,
+	                time            => $gatk_options->{'time'},
+	                nodes           => 1,
+	                memory          => $gatk_options->{'mem'},                                  #12000,
+	                ntasks_per_node => $gatk_options->{'nct'},                                  #4,
+	                dependency      => $dependency,
+	                logfile          => join( '/',
+	                    $self->phaseI_root, $self->dir->{'phaseI'}->{'log_create_recalibrated_bam'},
+	                    $jobname_create_recalibrated_bam )
+	            );
+	        }
+	        else {
+	            print "PrintReads will not be performed!!\n";
+	        }
+	
+	        $recalibrated_bams->{$sample_id} = $output_file;
+	
+	        $jobids_create_recalibrated_bam->{$sample_id} = $slurm_jobid_create_recalibrated_bam
+	          if ( defined $slurm_jobid_create_recalibrated_bam );
+	
+	    	$self->set_recalibrated_bams($recalibrated_bams);
+	    	$self->set_jobids_print_recalibrated_bam($jobids_create_recalibrated_bam);
+		}
+	}
     $self;
 }
 
@@ -928,59 +932,63 @@ sub split_bam_by_chr {
     my $chromosome = $self->get_chromosomes->{'chromosomes'};
 
     foreach my $donor ( sort keys %{ $self->config } ) {
-        my $sample_id = $self->config->{$donor}->{'case'}->{'ID'};
-        foreach my $chr ( sort keys %$chromosome ) {
-            my $output_file =
-              join( '/', $output_dir, $self->opts->{'run_id'} . '_' . $sample_id . '_' . $chr . '.bam' );
-            my $input       = $self->recalibrated_bams->{$sample_id};
-            my $commandline = $self->make_commandline(
-                walker      => 'PrintReads',
-                step        => 'split_bam_by_chr',
-                input       => '-I ' . $input,
-                output      => $output_file,
-                nt          => $gatk_options->{'nt'},
-                memory      => $gatk_options->{'mem'},
-                sample_name => $sample_id,
-                region      => $chr,
-            );
-            my $jobname_split_bam    = 'SplitBam_' . $sample_id . '_' . $chr . '_' . $self->opts->{'run_id'};
-            my $scriptname_split_bam = 'slurm_' . $jobname_split_bam . '.sh';
-            my $dependency           = 'none';
-            if ( $self->opts->{'create_recalibrated_bam'} eq 'Y' ) {
-                $dependency = $self->jobids_print_recalibrated_bam->{$sample_id};
-            }
-
-            my $slurm_jobid_split_bam;
-
-            if ( $self->opts->{'split_bam_by_chr'} eq 'Y' ) {
-                $slurm_jobid_split_bam = CCR::Utilities::General::create_submit_slurm_job(
-                    debug           => $self->opts->{'debug'},
-                    account         => $self->opts->{'account'},
-                    email           => $self->opts->{'email'}|| $self->opts->{'user'}. '@buffalo.edu',
-                    sendemail       => $self->opts->{'sendemail'},
-                    partition       => $self->opts->{'partition'},
-                    qos             => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'qos'},
-                    cluster         => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'cluster'},
-                    script          => $scriptname_split_bam,
-                    command         => $commandline,
-                    script_dir      => join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'script_split_bam'} ),
-                    modules         => "java/1.8.0_45,gatk/" . $self->opts->{'gatk_version'},
-                    job_name        => $jobname_split_bam,
-                    time            => $gatk_options->{'time'},
-                    nodes           => 1,
-                    memory          => $gatk_options->{'mem'},
-                    ntasks_per_node => $gatk_options->{'nct'},
-                    dependency      => $dependency,
-                    output =>
-                      join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'log_split_bam'}, $jobname_split_bam )
-                );
-            }
-            $jobid_split_bam_->{$sample_id}->{$chr}       = $slurm_jobid_split_bam;
-            $output_file_split_bam_->{$sample_id}->{$chr} = $output_file;
-        }
-    }
-    $self->set_output_split_bam($output_file_split_bam_);
-    $self->set_jobids_split_bam($jobid_split_bam_);
+		foreach my $sample_type (qw(case control) ) {
+	        my $sample_id = $self->config->{$donor}->{$sample_type}->{'ID'};
+			next if (! $sample_id);
+	        foreach my $chr ( sort keys %$chromosome ) {
+	            my $output_file =
+	              join( '/', $output_dir, $self->opts->{'run_id'} . '_' . $sample_id . '_' . $chr . '.bam' );
+	            my $input       = $self->recalibrated_bams->{$sample_id};
+	            my $commandline = $self->make_commandline(
+	                walker      => 'PrintReads',
+	                step        => 'split_bam_by_chr',
+	                input       => '-I ' . $input,
+	                output      => $output_file,
+	                nt          => $gatk_options->{'nt'},
+	                memory      => $gatk_options->{'mem'},
+	                sample_name => $sample_id,
+	                region      => $chr,
+	            );
+	            my $jobname_split_bam    = 'SplitBam_' . $sample_id . '_' . $chr . '_' . $self->opts->{'run_id'};
+	            my $scriptname_split_bam = 'slurm_' . $jobname_split_bam . '.sh';
+	            my $dependency           = 'none';
+	            if ( $self->opts->{'create_recalibrated_bam'} eq 'Y' ) {
+	                $dependency = $self->jobids_print_recalibrated_bam->{$sample_id};
+	            }
+	
+	            my $slurm_jobid_split_bam;
+	
+	            if ( $self->opts->{'split_bam_by_chr'} eq 'Y' ) {
+	                $slurm_jobid_split_bam = CCR::Utilities::General::create_submit_slurm_job(
+	                    debug           => $self->opts->{'debug'},
+	                    account         => $self->opts->{'account'},
+	                    email           => $self->opts->{'email'}|| $self->opts->{'user'}. '@buffalo.edu',
+	                    sendemail       => $self->opts->{'sendemail'},
+	                    partition       => $self->opts->{'partition'},
+	                    qos             => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'qos'},
+	                    cluster         => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'cluster'},
+	                    script          => $scriptname_split_bam,
+	                    command         => $commandline,
+	                    script_dir      => join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'script_split_bam'} ),
+	                    modules         => "java/1.8.0_45,gatk/" . $self->opts->{'gatk_version'},
+	                    job_name        => $jobname_split_bam,
+	                    time            => $gatk_options->{'time'},
+	                    nodes           => 1,
+	                    memory          => $gatk_options->{'mem'},
+	                    ntasks_per_node => $gatk_options->{'nct'},
+	                    dependency      => $dependency,
+	                    logfile         =>
+	                      join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'log_split_bam'}, $jobname_split_bam )
+	                );
+	            }
+	            $jobid_split_bam_->{$sample_id}->{$chr}       = $slurm_jobid_split_bam;
+	            $output_file_split_bam_->{$sample_id}->{$chr} = $output_file;
+	        }
+	   
+	    	$self->set_output_split_bam($output_file_split_bam_);
+	    	$self->set_jobids_split_bam($jobid_split_bam_);
+		}
+	}
     $self;
 }
 
@@ -995,64 +1003,68 @@ sub run_haplotype_caller {
 
     foreach my $chr ( sort keys %$chromosome ) {
         foreach my $donor ( sort keys %{ $self->config } ) {
-            my $sample_id      = $self->config->{$donor}->{'case'}->{'ID'};
-            my $bam_file       = $self->output_split_bam->{$sample_id}->{$chr};
-            my $output_file    = join( '/', $output_dir, basename($bam_file) . '.g.vcf' );
-            my $bam_outputfile = $output_file;
-            $bam_outputfile =~ s/\.bam\.g\.vcf/_HC\.bam/;
-            $bam_outputfile =~ s/raw_vcf/hc_bam/;
-
-            my $commandline = $self->make_commandline(
-                walker     => 'HaplotypeCaller',
-                input      => $bam_file,
-                output     => $output_file,
-                bam_output => $bam_outputfile,
-                memory     => $gatk_options->{'mem'},
-                nct        => $gatk_options->{'nct'},
-            );
-
-            my $jobname_haplotype_caller = join( '_', 'HC', $sample_id, '_' . $chr, $self->opts->{'run_id'} );
-            my $scriptname_haplotype_caller = 'slurm_' . $jobname_haplotype_caller . "\.sh";
-
-            my $dependency = 'none';
-            if ( $self->opts->{'split_bam_by_chr'} eq 'Y' ) {
-                $dependency = $self->jobids_split_bam->{$sample_id}->{$chr};
-            }
-
-            my $slurm_jobid_hc;
-            if ( $self->opts->{'run_haplotype_caller'} eq 'Y' ) {
-                $slurm_jobid_hc = CCR::Utilities::General::create_submit_slurm_job(
-                    debug			=> $self->opts->{'debug'},
-             		account         => $self->opts->{'account'},
-                    email           => $self->opts->{'email'}|| $self->opts->{'user'}. '@buffalo.edu',
-                    sendemail       => $self->opts->{'sendemail'},
-                    partition       => $self->opts->{'partition'},
-                    qos             => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'qos'},
-                    cluster         => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'cluster'},
-                    script  => $scriptname_haplotype_caller,
-                    command => $commandline,
-                    script_dir =>
-                      join( '/', $self->phaseII_root, $self->dir->{'phaseII'}->{'script_haplotype_caller'} ),
-                    modules         => "java/1.8.0_45,gatk/" . $self->opts->{'gatk_version'},
-                    job_name        => $jobname_haplotype_caller,
-                    time            => $gatk_options->{'time'},
-                    nodes           => 1,
-                    memory          => $gatk_options->{'mem'},
-                    ntasks_per_node => $gatk_options->{'nct'},
-                    dependency      => $dependency,
-                    output          => join( '/',
-                        $self->phaseII_root, $self->dir->{'phaseII'}->{'log_haplotype_caller'},
-                        $jobname_haplotype_caller )
-                );
-            }
-            $jobids_haplotype_caller->{$sample_id}->{$chr} = $slurm_jobid_hc;
-            $output_gvcfs->{$sample_id}->{$chr}            = $output_file;
-            $output_hc_bams->{$sample_id}->{$chr}          = $bam_outputfile;
-        }    # end of foreach $bam file
-    }
-    $self->set_output_gvcfs($output_gvcfs);
-    $self->set_output_hc_bams($output_hc_bams);
-    $self->set_jobids_hc($jobids_haplotype_caller);
+			foreach my $sample_type (qw(case control) ) {
+	            my $sample_id      = $self->config->{$donor}->{$sample_type}->{'ID'};
+				next if (! $sample_id);
+	            my $bam_file       = $self->output_split_bam->{$sample_id}->{$chr};
+	            my $output_file    = join( '/', $output_dir, basename($bam_file) . '.g.vcf' );
+	            my $bam_outputfile = $output_file;
+	            $bam_outputfile =~ s/\.bam\.g\.vcf/_HC\.bam/;
+	            $bam_outputfile =~ s/raw_vcf/hc_bam/;
+	
+	            my $commandline = $self->make_commandline(
+	                walker     => 'HaplotypeCaller',
+	                input      => $bam_file,
+	                output     => $output_file,
+	                bam_output => $bam_outputfile,
+	                memory     => $gatk_options->{'mem'},
+	                nct        => $gatk_options->{'nct'},
+	            );
+	
+	            my $jobname_haplotype_caller = join( '_', 'HC', $sample_id, $chr, $self->opts->{'run_id'} );
+	            my $scriptname_haplotype_caller = 'slurm_' . $jobname_haplotype_caller . "\.sh";
+	
+	            my $dependency = 'none';
+	            if ( $self->opts->{'split_bam_by_chr'} eq 'Y' ) {
+	                $dependency = $self->jobids_split_bam->{$sample_id}->{$chr};
+	            }
+	
+	            my $slurm_jobid_hc;
+	            if ( $self->opts->{'run_haplotype_caller'} eq 'Y' ) {
+	                $slurm_jobid_hc = CCR::Utilities::General::create_submit_slurm_job(
+	                    debug			=> $self->opts->{'debug'},
+	             		account         => $self->opts->{'account'},
+	                    email           => $self->opts->{'email'}|| $self->opts->{'user'}. '@buffalo.edu',
+	                    sendemail       => $self->opts->{'sendemail'},
+	                    partition       => $self->opts->{'partition'},
+	                    qos             => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'qos'},
+	                    cluster         => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'cluster'},
+	                    script  => $scriptname_haplotype_caller,
+	                    command => $commandline,
+	                    script_dir =>
+	                      join( '/', $self->phaseII_root, $self->dir->{'phaseII'}->{'script_haplotype_caller'} ),
+	                    modules         => "java/1.8.0_45,gatk/" . $self->opts->{'gatk_version'},
+	                    job_name        => $jobname_haplotype_caller,
+	                    time            => $gatk_options->{'time'},
+	                    nodes           => 1,
+	                    memory          => $gatk_options->{'mem'},
+	                    ntasks_per_node => $gatk_options->{'nct'},
+	                    dependency      => $dependency,
+	                    logfile          => join( '/',
+	                        $self->phaseII_root, $self->dir->{'phaseII'}->{'log_haplotype_caller'},
+	                        $jobname_haplotype_caller )
+	                );
+	            }
+	            $jobids_haplotype_caller->{$sample_id}->{$chr} = $slurm_jobid_hc;
+	            $output_gvcfs->{$sample_id}->{$chr}            = $output_file;
+	            $output_hc_bams->{$sample_id}->{$chr}          = $bam_outputfile;
+	        }    # end of foreach $bam file
+	    
+	    	$self->set_output_gvcfs($output_gvcfs);
+	    	$self->set_output_hc_bams($output_hc_bams);
+	    	$self->set_jobids_hc($jobids_haplotype_caller);
+		}
+	}
     $self;
 }
 
@@ -1068,10 +1080,13 @@ sub joint_calling_genotypes {
         my @gvcfs;
         my @dependency;
         foreach my $donor ( sort keys %{ $self->config } ) {
-            my $sample_id = $self->config->{$donor}->{'case'}->{'ID'};
-            push @gvcfs,      $self->output_gvcfs->{$sample_id}->{$chr};
-            push @dependency, $self->jobids_hc->{$sample_id}->{$chr};
-        }
+			foreach my $sample_type (qw(case control) ) {
+            	my $sample_id = $self->config->{$donor}->{$sample_type}->{'ID'};
+				next if (! $sample_id);
+            	push @gvcfs,      $self->output_gvcfs->{$sample_id}->{$chr};
+            	push @dependency, $self->jobids_hc->{$sample_id}->{$chr};
+        	}
+		}
         my $output_file = join( '/', $output_dir, $self->opts->{'run_id'} . '_' . $chr . '_raw.vcf' );
         my $gvcfs = join( " -V ", @gvcfs );
 
@@ -1113,7 +1128,7 @@ sub joint_calling_genotypes {
                 memory          => $gatk_options->{'mem'},
                 ntasks_per_node => $gatk_options->{'nct'},
                 dependency      => $dependency,
-                output          => join( '/',
+                logfile          => join( '/',
                     $self->phaseII_root, $self->dir->{'phaseII'}->{'log_joint_calling_genotypes'},
                     $jobname_joint_calling_genotypes )
             );
@@ -1169,7 +1184,7 @@ sub run_cat_variants {
             memory          => $gatk_options->{'mem'},
             ntasks_per_node => $gatk_options->{'nt'},
             dependency      => $dependency,
-            output =>
+            logfile         =>
               join( '/', $self->phaseII_root, $self->dir->{'phaseII'}->{'log_cat_variants'}, $jobname_cat_variants )
         );
     }
@@ -1234,14 +1249,14 @@ sub run_variant_recalibrator {
             script     => $scriptname_variant_recalibrator,
             command    => $commandline,
             script_dir => join( '/', $self->phaseIII_root, $self->dir->{'phaseIII'}->{'script_variant_recalibrator'} ),
-            modules    => "java/1.8.0_45,gatk/" . $self->opts->{'gatk_version'},
+            modules    => "java/1.8.0_45,R,gatk/" . $self->opts->{'gatk_version'},
             job_name   => $jobname_variant_recalibrator,
             time       => $gatk_options->{'time'},
             nodes      => 1,
             memory     => $gatk_options->{'mem'},
             ntasks_per_node => $gatk_options->{'nt'},
             dependency      => $dependency,
-            output          => join( '/',
+            logfile          => join( '/',
                 $self->phaseIII_root, $self->dir->{'phaseIII'}->{'log_variant_recalibrator'},
                 $jobname_variant_recalibrator )
         );
@@ -1306,14 +1321,14 @@ sub run_apply_recalibration {
             script     => $scriptname_apply_recalibration,
             command    => $commandline,
             script_dir => join( '/', $self->phaseIII_root, $self->dir->{'phaseIII'}->{'script_apply_recalibration'} ),
-            modules    => "java/1.8.0_45,gatk/" . $self->opts->{'gatk_version'},
+            modules    => "java/1.8.0_45,R,gatk/" . $self->opts->{'gatk_version'},
             job_name   => $jobnames_apply_recalibration,
             time       => $gatk_options->{'time'},
             nodes      => 1,
             memory     => $gatk_options->{'mem'},
             ntasks_per_node => $gatk_options->{'nt'},
             dependency      => $dependency,
-            output          => join( '/',
+            logfile          => join( '/',
                 $self->phaseIII_root, $self->dir->{'phaseIII'}->{'log_apply_recalibration'},
                 $jobnames_apply_recalibration )
         );
@@ -1374,7 +1389,7 @@ sub merge_hc_bams {
                 account         => $self->opts->{'account'},
                 ntasks_per_node => 1,
                 dependency      => $dependency,
-                output          => join( '/',
+                logfile          => join( '/',
                     $self->phaseII_root, $self->dir->{'phaseII'}->{'log_merge_hc_bams'},
                     $jobname_merge_hc_bams )
             );
