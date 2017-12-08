@@ -8,9 +8,9 @@ use Carp;
 use File::Basename;
 use Params::Validate qw(:all);
 
-#use CCR::Utilities::General;
-use lib '/projects/ccrstaff/jw24/software/TMP/CCR-Utilities-General/lib/CCR/Utilities';
-use General;
+use CCR::Utilities::General;
+#use lib '/projects/ccrstaff/jw24/software/TMP/CCR-Utilities-General/lib/CCR/Utilities';
+#use General2;
 
 =head1 NAME
 
@@ -18,7 +18,7 @@ NGS::Tools::GATK - Genome Analysis Toolkit Perl API
 
 =head1 VERSION
 
-Version 0.04
+Version 0.05
 
 =cut
 
@@ -660,7 +660,7 @@ sub make_commandline {
         }
     }
     elsif ( $walker eq 'HaplotypeCaller' ) {
-
+		
         $params = join( ' ',
             '-R', $self->opts->{'ref'},
             '-I',          $input, '-o',   $output, '-l', 'INFO', "--allow_potentially_misencoded_quality_scores",
@@ -731,9 +731,13 @@ sub make_commandline {
         if ( $data_type eq 'wgs' ) {
             $params_common =~ s/\-an QD/\-an QD \-an DP/;
         }
-        elsif ( $data_type eq 'wes' or $data_type eq 'rna-seq' ) {
+        elsif ( $data_type eq 'wes' ) {
             $params_common =~ s/\-an InbreedingCoeff//;
+			
         }
+		elsif ( $data_type eq 'rna-seq' ) {
+			$params_common =~ s/\-an InbreedingCoeff/-dontUseSoftClippedBases -stand_call_conf 20.0/;
+		}
 
         if ( $mode eq 'snp' ) {
             $params = join( ' ', $params_common, '-mode SNP', '--maxGaussians 6' );
@@ -804,7 +808,7 @@ sub run_base_recalibration {
 	        my $jobname_base_recalibration = join( '_', 'BQR', $sample_id, $self->opts->{'run_id'} );
 	        my $scriptname_base_recalibration = 'slurm_' . $jobname_base_recalibration . ".sh";
 	        my $slurm_jobid_crt;
-	
+
 	        if ( $self->opts->{'create_recalibration_table'} eq 'Y' ) {
 	            $slurm_jobid_crt = CCR::Utilities::General::create_submit_slurm_job(
 	                debug      => $self->opts->{'debug'},

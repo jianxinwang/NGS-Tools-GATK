@@ -133,77 +133,61 @@
 .\" ========================================================================
 .\"
 .IX Title "GATK 1"
-.TH GATK 1 "2017-10-19" "perl v5.20.2" "User Contributed Perl Documentation"
+.TH GATK 1 "2017-12-08" "perl v5.20.2" "User Contributed Perl Documentation"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
 .nh
 .SH "NAME"
 GATK.pl
-.SH "SYNOPSIS"
-.IX Header "SYNOPSIS"
-\&\fB\s-1GATK\s0.pl\fR [options] <\-\-config> <\-\-run_id> <\-\-output_dir>
-.PP
-.Vb 5
-\&        Arguments:
-\&        \-\-config                                A YAML file containing BAM files and sample names for processing
-\&        \-\-run_id                                A name/ID for this GATK run, suggest to use the project, dataset or cohort name
-\&        \-\-output_dir                    Output directory (for example: /scratch2/user/your_user_name).
-\&    \-\-data_type             Indicate if the input sequence data are from whole genome sequencing or whole exome sequencying. valid values are "wgs" or "wes"
-\&        
-\&        Options:
-\&        \-\-help                                  Brief help message
-\&        \-\-man                                   Full documentation
-\&        \-\-gatk_version                  Version of the GATK program, e.g. "3.3.0", "2.4.9", etc. default "3.6.0"
-\&        \-\-ref                                   Path for reference genome fasta file (default:hg19)
-\&        \-\-indels                                Insertion/deletion file in VCF format
-\&        \-\-dbsnp                                 dbSNP file in VCF format
-\&        \-\-ref_type                              Reference genome (default:hg19) Other acceptable reference genome is b37 from the broad institute
-\&        \-\-indel_realigner_target_creator        Perform RealingerTargetCreator (default:Y)
-\&        \-\-indel_realigner                       Perform IndelReaglinger (default:Y)
-\&        \-\-create_recalibration_table            Perform CreateRecalibrationTable (default:Y)
-\&        \-\-merge_raw_vcf                         Perfrom MergeRawVcf (default:Y)
-\&        \-\-variant_recalibrator                  Perfrom VariantRecalibrator (default:Y)
-\&        \-\-apply_recalibration                   Perfrom ApplyRecalibration (default:Y)
-\&
-\&        Examples:
-\&        
-\&        ### Simple case, assuming everying will run smoothly and the default values are fine to you:
-\&        perl gatk.pl \-\-config tumour_normal_paried.yaml \-\-output_dir /scratch2/user/jwang/TEST \-\-gatk_version 3.5.0 \-\-data_type wgs \-\-run_id SIMWGS
-.Ve
-.SH "OPTIONS"
-.IX Header "OPTIONS"
-.IP "\fB\-\-help\fR" 8
-.IX Item "--help"
-Print a brief help message and exit.
-.IP "\fB\-\-man\fR" 8
-.IX Item "--man"
-Print the manual page.
-.IP "\fB\-\-config\fR" 8
-.IX Item "--config"
-Config \s-1YAML\s0 file containing samples with corresponding \s-1BAM\s0 file locations
-.IP "\fB\-\-sample\fR" 8
-.IX Item "--sample"
-Name for a job of the \s-1GATK\s0 pipeline
-.IP "\fB\-\-dir\fR" 8
-.IX Item "--dir"
-Output directory name. /scratch/user/ is recommended because this \s-1GATK\s0 script can generated a few \s-1TB\s0 of intermediate files if your sample is whole gneome sequencing data.
-.IP "\fB\-\-ref\fR" 8
-.IX Item "--ref"
-Path for reference genome fasta file. Default is the path for the b37_decoy reference genome.
-.IP "\fB\-\-ref_type\fR" 8
-.IX Item "--ref_type"
-Reference genome (default:b37_decoy, from Broad Institute, used in 1kg phaseII)
-.IP "\fB\-\-pre_processing\fR" 8
-.IX Item "--pre_processing"
-Perform \s-1BAM\s0 processing including RealignerTargetCreator, IndelRealigner, BaseRecalibrator, PrintReads, and merging and indexing \s-1BAM\s0 files using Picard.
-(default:Y)
-.IP "\fB\-\-SNP_calling\fR" 8
-.IX Item "--SNP_calling"
-Perform \s-1SNP\s0 calling including HaplotypeCaller or UnifiedGenotyper, VariantRecalibrator, ApplyRecalibration, and merging \s-1VCF\s0 files. (default:Y)
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
-\&\fB\s-1GATK\s0.pl\fR Run the Genome Analysis Toolkit pipeline.
+\&\fB\s-1GATK\s0.pl\fR Run the Genome Analysis Toolkit pipeline for human samples.
+.SH "SYNOPSIS"
+.IX Header "SYNOPSIS"
+\&\fB\s-1GATK\s0.pl\fR [options] <\-\-config> <\-\-run_id> <\-\-output_dir> <\-\-account> <\-\-data_type> <\-\-assembly> <\-\-partition>
+.PP
+Arguments:
+.PP
+.Vb 8
+\&        \-\-config                A YAML file containing BAM files and sample names for processing
+\&        \-\-run_id                A name/ID for this GATK run, suggest to use the project, dataset or cohort name
+\&        \-\-output_dir            Output directory (for example: /scratch2/user/your_user_name).
+\&        \-\-account               Group name of the user belongs to
+\&        \-\-data_type             Indicate if the input sequence data are from whole genome sequencing or whole exome sequencying. valid values are "wgs", "wes" or "rna\-seq"
+\&        \-\-assembly              Assembly version for the ref genome. Use \*(Aqb37\*(Aq or \*(AqGRCh38\*(Aq. Default to b37
+\&        \-\-partition             Valide values are "general\-compute", "industry". Default to "general\-compute". 
+\&                                If set to "industry", qos and cluster will also be set to "industry"
+.Ve
+.PP
+Options:
+.PP
+.Vb 10
+\&        \-\-cluster               Cluster name, valid values are \*(Aqub\-hpc\*(Aq, \*(Aqindustry\*(Aq. Default to \*(Aqub\-hpc\*(Aq
+\&        \-\-qos                   Quality of Server, limits or priority boost. Valid values are "supporters", 
+\&                                "general\-compute", "industry". Default to "general\-compute". 
+\&                                Use "industry" if you are submitting jobs to industry cluster
+\&        \-\-email                 Used to send Slurm run status. Defaul is "username@buffalo.edu"                       
+\&        \-\-sendemail             Send email after slurm job finishes. Y|N, default is No. Will flood your mailbox if set to \*(AqY\*(Aq
+\&        \-\-gatk_version          Version of the GATK program, e.g. "3.3.0", "3.6.0", etc. default "3.8.0"
+\&        \-\-ref                   Path for reference genome fasta file (defauld b37)
+\&        \-\-create_recalibration_table            Perform CreateRecalibrationTable (default:Y)
+\&        \-\-merge_raw_vcf         Perfrom MergeRawVcf (default:Y)
+\&        \-\-variant_recalibrator          Perfrom VariantRecalibrator (default:Y)
+\&        \-\-apply_recalibration           Perfrom ApplyRecalibration (default:Y)
+\&        \-\-create_recalibrated_bam               Default is \*(AqY\*(Aq, yes
+\&        \-\-split_bam_by_chr              Default is \*(AqY\*(Aq, yes
+\&        \-\-run_haplotype_caller          Default is \*(AqY\*(Aq, yes
+\&        \-\-joint_calling_genotypes               Default is \*(AqN\*(Aq, no, because users may need to run several batches of samples before making the final genotype calling
+\&        \-\-cat_variants          Defautl is \*(AqN\*(Aq, since default value for \-\-joint_calling_genotypes is set to \*(AqN\*(Aq. Set to \*(AqY\*(Aq if need to perform this step
+\&        \-\-variant_recalibrator          Default is \*(AqN\*(Aq. Set to \*(AqY\*(Aq if need to perform this step
+\&        \-\-apply_recalibration           Default is \*(AqN\*(Aq. Set to \*(AqY\*(Aq if need to perform this step
+\&        \-\-merge_hc_bams         Merge bam files created by HaplotypeCaller for use with IGV. Y|N, Default to No.
+.Ve
+.PP
+Examples:
+.PP
+\&\s-1GATK\s0.pl \-\-config config.yaml \-\-output_dir /gpfs/scratch/user/gatk \-\-gatk_version 3.8.0 \-\-data_type wgs \-\-run_id my_project_name \-\-assembly b37 \-\-account your_group name \-\-partition general\-compute|industry
 .SH "AUTHOR"
 .IX Header "AUTHOR"
 Jianxin Wang

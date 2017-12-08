@@ -15,9 +15,9 @@ use File::Spec;
 use File::Basename;
 use YAML qw(LoadFile);
 
-#use NGS::Tools::GATK;
-use lib '/projects/ccrstaff/jw24/software/TMP/NGS-Tools-GATK/lib/NGS/Tools';
-use GATK;
+use NGS::Tools::GATK;
+#use lib '/projects/ccrstaff/jw24/software/TMP/NGS-Tools-GATK/lib/NGS/Tools';
+#use GATK;
 
 ### COMMAND LINE DEFAULT ARGUMENTS ################################################################
 our %opts = (

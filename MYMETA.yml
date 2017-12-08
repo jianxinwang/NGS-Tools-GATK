@@ -16,7 +16,7 @@ name: NGS-Tools-GATK
 provides:
   NGS::Tools::GATK:
     file: lib/NGS/Tools/GATK.pm
-    version: '0.05'
+    version: '0.06'
 resources:
   license: http://opensource.org/licenses/artistic-license-2.0.php
-version: '0.05'
+version: '0.06'
