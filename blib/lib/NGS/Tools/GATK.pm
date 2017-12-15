@@ -256,29 +256,42 @@ sub dir_structure {
     my %dirs = (
         phaseI => {
             intermediate_bam_files         => 'intermediate_bam_files',
+			intermed_runid                 => "intermediate_bam_files/$self->opts->{'run_id'}",
             recalibration_table            => 'recalibration_table',
             scripts                        => 'scripts',
             script_recalibration_table     => 'scripts/recalibration_table',
             script_create_recalibrated_bam => 'scripts/create_recalibrated_bam',
+			script_cr_recal_bam_runid      => "scripts/create_recalibrated_bam/$self->opts->{'run_id'}",
             script_split_bam               => 'scripts/split_bam',
+			script_split_bam_runid         => "scripts/split_bam/$self->opts->{'run_id'}",
             log                            => 'log',
             log_recalibration_table        => 'log/recalibration_table',
             log_create_recalibrated_bam    => 'log/create_recalibrated_bam',
+			log_cr_recal_bam_runid         => "log/create_recalibrated_bam/$self->opts->{'run_id'}",
             log_split_bam                  => 'log/split_bam',
+			log_split_bam_runid            => "log/split_bam/$self->opts->{'run_id'}",
         },
         phaseII => {
             raw_vcf                        => 'raw_vcf',
+			raw_vcf_runid                  => "raw_vcf/$self->opts->{'run_id'}",
             scripts                        => 'scripts',
             script_joint_calling_genotypes => 'scripts/joint_calling_genotypes',
+			script_joint_cal_gt_runid      => "scripts/joint_calling_genotypes/$self->opts->{'run_id'}",
             script_haplotype_caller        => 'scripts/haplotype_caller',
+			script_haplotype_caller_runid  => "scripts/haplotype_caller/$self->opts->{'run_id'}",
             script_cat_variants            => 'scripts/cat_variants',
             script_merge_hc_bams           => 'scripts/merge_hc_bams',
+     		script_merge_hc_bams_runid     => "scripts/merge_hc_bams/$self->opts->{'run_id'}",
             hc_bam                         => 'hc_bam',
+			hc_bam_runid                   => "hc_bam/$self->opts->{'run_id'}",
             log                            => 'log',
             log_joint_calling_genotypes    => 'log/joint_calling_genotypes',
+			log_joint_calling_gt_runid     => "log/joint_calling_genotypes/$self->opts->{'run_id'}",
             log_haplotype_caller           => 'log/haplotype_caller',
+			log_haplotype_caller_run_id    => "log/haplotype_caller/$self->opts->{'run_id'}",
             log_cat_variants               => 'log/cat_variants',
             log_merge_hc_bams              => 'log/merge_hc_bams',
+			log_merge_hc_bams_runid        => "log/merge_hc_bams/$self->opts->{'run_id'}",
         },
         phaseIII => {
             scripts                     => 'scripts',
@@ -393,7 +406,7 @@ sub get_gatk_options {
             $time = '20:00:00';
         }
         elsif ( $walker eq 'HaplotypeCaller' ) {
-            $nct  = 6;
+            $nct  = 1;
             $mem  = 32_000;
             $time = '72:00:00';
         }
@@ -667,6 +680,9 @@ sub make_commandline {
             '-minPruning', 2,      '-nct', 1,       '--dbsnp',
             $self->opts->{'dbsnp'}, '--bamOutput', $bam_output,
             '--emitRefConfidence GVCF --variant_index_type LINEAR --variant_index_parameter 128000' );
+		if ($data_type eq 'rna-seq'){
+			$params = $params . ' -dontUseSoftClippedBases -stand_call_conf 20.0';
+		}
     }
     elsif ( $walker eq 'GenotypeGVCFs' ) {
 
@@ -736,7 +752,7 @@ sub make_commandline {
 			
         }
 		elsif ( $data_type eq 'rna-seq' ) {
-			$params_common =~ s/\-an InbreedingCoeff/-dontUseSoftClippedBases -stand_call_conf 20.0/;
+			$params_common =~ s/\-an InbreedingCoeff//;
 		}
 
         if ( $mode eq 'snp' ) {
@@ -860,7 +876,7 @@ sub create_recalibrated_bams {
 			next if (! $sample_id);
 	        my $input_bam = $self->config->{$donor}->{$sample_type}->{'path'};
 	
-	        my $dir = join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'intermediate_bam_files'} );
+	        my $dir = join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'intermed_runid'} );
 	        my $output_file = join( '_', $self->opts->{'run_id'}, $sample_id, 'recalibrated.bam' );
 	        $output_file = join( '/', $dir, $output_file );
 	
@@ -898,7 +914,7 @@ sub create_recalibrated_bams {
 	                script    => $scriptname_create_recalibrated_bam,
 	                command   => $commandline,
 	                script_dir =>
-	                  join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'script_create_recalibrated_bam'} ),
+	                  join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'script_cr_recal_bam_runid'} ),
 	                modules         => "java/1.8.0_45,gatk/" . $self->opts->{'gatk_version'},
 	                job_name        => $jobname_create_recalibrated_bam,
 	                time            => $gatk_options->{'time'},
@@ -907,7 +923,7 @@ sub create_recalibrated_bams {
 	                ntasks_per_node => $gatk_options->{'nct'},                                  #4,
 	                dependency      => $dependency,
 	                logfile          => join( '/',
-	                    $self->phaseI_root, $self->dir->{'phaseI'}->{'log_create_recalibrated_bam'},
+	                    $self->phaseI_root, $self->dir->{'phaseI'}->{'log_cr_recal_bam_runid'},
 	                    $jobname_create_recalibrated_bam )
 	            );
 	        }
@@ -930,7 +946,7 @@ sub create_recalibrated_bams {
 sub split_bam_by_chr {
     my $self         = shift;
     my $gatk_options = $self->get_gatk_options( walker => 'PrintReads' );
-    my $output_dir   = join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'intermediate_bam_files'} );
+    my $output_dir   = join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'intermed_runid'} );
     my $jobid_split_bam_;
     my $output_file_split_bam_;
     my $chromosome = $self->get_chromosomes->{'chromosomes'};
@@ -973,7 +989,7 @@ sub split_bam_by_chr {
 	                    cluster         => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'cluster'},
 	                    script          => $scriptname_split_bam,
 	                    command         => $commandline,
-	                    script_dir      => join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'script_split_bam'} ),
+	                    script_dir      => join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'script_split_bam_runid'} ),
 	                    modules         => "java/1.8.0_45,gatk/" . $self->opts->{'gatk_version'},
 	                    job_name        => $jobname_split_bam,
 	                    time            => $gatk_options->{'time'},
@@ -982,7 +998,7 @@ sub split_bam_by_chr {
 	                    ntasks_per_node => $gatk_options->{'nct'},
 	                    dependency      => $dependency,
 	                    logfile         =>
-	                      join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'log_split_bam'}, $jobname_split_bam )
+	                      join( '/', $self->phaseI_root, $self->dir->{'phaseI'}->{'log_split_bam_runid'}, $jobname_split_bam )
 	                );
 	            }
 	            $jobid_split_bam_->{$sample_id}->{$chr}       = $slurm_jobid_split_bam;
@@ -1001,7 +1017,7 @@ sub run_haplotype_caller {
     my $jobids_haplotype_caller;
     my $output_gvcfs;
     my $output_hc_bams;
-    my $output_dir = join( '/', $self->phaseII_root, $self->dir->{'phaseII'}->{'raw_vcf'} );
+    my $output_dir = join( '/', $self->phaseII_root, $self->dir->{'phaseII'}->{'raw_vcf_runid'} );
     my $gatk_options = $self->get_gatk_options( walker => 'HaplotypeCaller' );
     my $chromosome = $self->get_chromosomes->{'chromosomes'};
 
@@ -1020,6 +1036,7 @@ sub run_haplotype_caller {
 	                walker     => 'HaplotypeCaller',
 	                input      => $bam_file,
 	                output     => $output_file,
+                    data_type => $self->opts->{'data_type'},
 	                bam_output => $bam_outputfile,
 	                memory     => $gatk_options->{'mem'},
 	                nct        => $gatk_options->{'nct'},
@@ -1046,7 +1063,7 @@ sub run_haplotype_caller {
 	                    script  => $scriptname_haplotype_caller,
 	                    command => $commandline,
 	                    script_dir =>
-	                      join( '/', $self->phaseII_root, $self->dir->{'phaseII'}->{'script_haplotype_caller'} ),
+	                      join( '/', $self->phaseII_root, $self->dir->{'phaseII'}->{'script_haplotype_caller_runid'} ),
 	                    modules         => "java/1.8.0_45,gatk/" . $self->opts->{'gatk_version'},
 	                    job_name        => $jobname_haplotype_caller,
 	                    time            => $gatk_options->{'time'},
@@ -1055,7 +1072,7 @@ sub run_haplotype_caller {
 	                    ntasks_per_node => $gatk_options->{'nct'},
 	                    dependency      => $dependency,
 	                    logfile          => join( '/',
-	                        $self->phaseII_root, $self->dir->{'phaseII'}->{'log_haplotype_caller'},
+	                        $self->phaseII_root, $self->dir->{'phaseII'}->{'log_haplotype_caller_runid'},
 	                        $jobname_haplotype_caller )
 	                );
 	            }
@@ -1079,7 +1096,7 @@ sub joint_calling_genotypes {
 
     my $chromosome   = $self->get_chromosomes->{'chromosomes'};
     my $gatk_options = $self->get_gatk_options( walker => 'GenotypeGVCFs' );
-    my $output_dir   = join( '/', $self->phaseII_root, $self->dir->{'phaseII'}->{'raw_vcf'} );
+    my $output_dir   = join( '/', $self->phaseII_root, $self->dir->{'phaseII'}->{'raw_vcf_runid'} );
     foreach my $chr ( sort keys %$chromosome ) {
         my @gvcfs;
         my @dependency;
@@ -1124,7 +1141,7 @@ sub joint_calling_genotypes {
                 script    => $scriptname_joint_calling_genotypes,
                 command   => $commandline,
                 script_dir =>
-                  join( '/', $self->phaseII_root, $self->dir->{'phaseII'}->{'script_joint_calling_genotypes'} ),
+                  join( '/', $self->phaseII_root, $self->dir->{'phaseII'}->{'script_joint_cal_gt_runid'} ),
                 modules         => "java/1.8.0_45,gatk/" . $self->opts->{'gatk_version'},
                 job_name        => $jobname_joint_calling_genotypes,
                 time            => $gatk_options->{'time'},
@@ -1133,7 +1150,7 @@ sub joint_calling_genotypes {
                 ntasks_per_node => $gatk_options->{'nct'},
                 dependency      => $dependency,
                 logfile          => join( '/',
-                    $self->phaseII_root, $self->dir->{'phaseII'}->{'log_joint_calling_genotypes'},
+                    $self->phaseII_root, $self->dir->{'phaseII'}->{'log_joint_calling_gt_runid'},
                     $jobname_joint_calling_genotypes )
             );
         }
@@ -1156,7 +1173,7 @@ sub run_cat_variants {
         push @depends,    $self->jobid_joint_calling_genotypes->{$chr};
     }
     my $input_vcf   = join( " -V ", @input_vcfs );
-    my $output_dir  = join( '/',    $self->phaseII_root, $self->dir->{'phaseII'}->{'raw_vcf'} );
+    my $output_dir  = join( '/',    $self->phaseII_root, $self->dir->{'phaseII'}->{'raw_vcf_runid'} );
     my $output_file = join( '/',    $output_dir, $self->opts->{'run_id'} . '_merged_raw.vcf' );
     my $commandline = join( " ",
         "java -Xmx5000m -cp \$GATK_HOME/GenomeAnalysisTK.jar",
@@ -1368,7 +1385,7 @@ sub merge_hc_bams {
             $dependency = join( ':', @dependency );
         }
 
-        my $output_dir = join( '/', $self->phaseII_root, $self->dir->{'phaseII'}->{'hc_bam'} );
+        my $output_dir = join( '/', $self->phaseII_root, $self->dir->{'phaseII'}->{'hc_bam_runid'} );
         my $output_bam = join( '/', $output_dir,         $self->opts->{'run_id'} . '_' . $donor . '_merged_hc.bam' );
 
         my $jobname_merge_hc_bams    = join( '_', 'merge_hc_bams', $donor, $self->opts->{'run_id'} );
@@ -1384,7 +1401,7 @@ sub merge_hc_bams {
                 cluster   => $self->opts->{'partition'} eq 'industry' ? 'industry' : $self->opts->{'cluster'},
                 script          => $scriptname_merge_hc_bams,
                 command         => $commandline,
-                script_dir      => join( '/', $self->phaseII_root, $self->dir->{'phaseII'}->{'script_merge_hc_bams'} ),
+                script_dir      => join( '/', $self->phaseII_root, $self->dir->{'phaseII'}->{'script_merge_hc_bams_runid'} ),
                 modules         => 'samtools',
                 job_name        => $jobname_merge_hc_bams,
                 time            => '05:00:00',
@@ -1394,7 +1411,7 @@ sub merge_hc_bams {
                 ntasks_per_node => 1,
                 dependency      => $dependency,
                 logfile          => join( '/',
-                    $self->phaseII_root, $self->dir->{'phaseII'}->{'log_merge_hc_bams'},
+                    $self->phaseII_root, $self->dir->{'phaseII'}->{'log_merge_hc_bams_runid'},
                     $jobname_merge_hc_bams )
             );
             print "$commandline\n";
