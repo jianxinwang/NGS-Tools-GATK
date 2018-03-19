@@ -659,6 +659,9 @@ sub make_commandline {
             $input_bam_files, '-R', $self->opts->{'ref'},
             '-l INFO', '-nct', $nct, '-nt', $nt, $known_sites, $input_covariates, '--bqsrBAQGapOpenPenalty', 30, '-o',
             $output );
+		if ($data_type eq 'rna-seq') {
+			$params .= ' -U ALLOW_N_CIGAR_READS';
+		}
 
     }
     elsif ( $walker eq 'PrintReads' ) {
@@ -666,6 +669,9 @@ sub make_commandline {
             $params = join( ' ',
                 $input, '-R', $self->opts->{'ref'},
                 '-BQSR', $table, '-nct', $nct, '--disable_indel_quals', '-o', $output );
+			if ($data_type eq 'rna-seq'){
+				$params .= ' -U ALLOW_N_CIGAR_READS';
+			}
 
         }
         elsif ( $step eq 'split_bam_by_chr' ) {
@@ -754,6 +760,7 @@ sub make_commandline {
 		elsif ( $data_type eq 'rna-seq' ) {
 			$params_common =~ s/\-an InbreedingCoeff//;
 		}
+	
 
         if ( $mode eq 'snp' ) {
             $params = join( ' ', $params_common, '-mode SNP', '--maxGaussians 6' );

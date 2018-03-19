@@ -4,7 +4,7 @@ do{ my $x = {
                            },
        'conflicts' => {},
        'recommends' => {},
-       'requires' => {},
-       'test_requires' => {}
+       'test_requires' => {},
+       'requires' => {}
      };
 $x; }

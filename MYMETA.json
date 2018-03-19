@@ -4,7 +4,7 @@
       "Jianxin Wang <jw24@buffalo.edu>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Module::Build version 0.4226",
+   "generated_by" : "Module::Build version 0.4205",
    "license" : [
       "artistic_2"
    ],
@@ -37,6 +37,5 @@
          "http://opensource.org/licenses/artistic-license-2.0.php"
       ]
    },
-   "version" : "0.06",
-   "x_serialization_backend" : "JSON::PP version 2.27400_02"
+   "version" : "0.06"
 }
