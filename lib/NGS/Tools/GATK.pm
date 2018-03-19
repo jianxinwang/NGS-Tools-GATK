@@ -256,42 +256,42 @@ sub dir_structure {
     my %dirs = (
         phaseI => {
             intermediate_bam_files         => 'intermediate_bam_files',
-			intermed_runid                 => "intermediate_bam_files/$self->opts->{'run_id'}",
+			intermed_runid                 => 'intermediate_bam_files/' .$self->opts->{'run_id'},
             recalibration_table            => 'recalibration_table',
             scripts                        => 'scripts',
             script_recalibration_table     => 'scripts/recalibration_table',
             script_create_recalibrated_bam => 'scripts/create_recalibrated_bam',
-			script_cr_recal_bam_runid      => "scripts/create_recalibrated_bam/$self->opts->{'run_id'}",
+			script_cr_recal_bam_runid      => 'scripts/create_recalibrated_bam/' .$self->opts->{'run_id'},
             script_split_bam               => 'scripts/split_bam',
-			script_split_bam_runid         => "scripts/split_bam/$self->opts->{'run_id'}",
+			script_split_bam_runid         => 'scripts/split_bam/' .$self->opts->{'run_id'},
             log                            => 'log',
             log_recalibration_table        => 'log/recalibration_table',
             log_create_recalibrated_bam    => 'log/create_recalibrated_bam',
-			log_cr_recal_bam_runid         => "log/create_recalibrated_bam/$self->opts->{'run_id'}",
+			log_cr_recal_bam_runid         => 'log/create_recalibrated_bam/' .$self->opts->{'run_id'},
             log_split_bam                  => 'log/split_bam',
-			log_split_bam_runid            => "log/split_bam/$self->opts->{'run_id'}",
+			log_split_bam_runid            => 'log/split_bam/' .$self->opts->{'run_id'},
         },
         phaseII => {
             raw_vcf                        => 'raw_vcf',
-			raw_vcf_runid                  => "raw_vcf/$self->opts->{'run_id'}",
+			raw_vcf_runid                  => 'raw_vcf/' .$self->opts->{'run_id'},
             scripts                        => 'scripts',
             script_joint_calling_genotypes => 'scripts/joint_calling_genotypes',
-			script_joint_cal_gt_runid      => "scripts/joint_calling_genotypes/$self->opts->{'run_id'}",
+			script_joint_cal_gt_runid      => 'scripts/joint_calling_genotypes/' .$self->opts->{'run_id'},
             script_haplotype_caller        => 'scripts/haplotype_caller',
-			script_haplotype_caller_runid  => "scripts/haplotype_caller/$self->opts->{'run_id'}",
+			script_haplotype_caller_runid  => 'scripts/haplotype_caller/' .$self->opts->{'run_id'},
             script_cat_variants            => 'scripts/cat_variants',
             script_merge_hc_bams           => 'scripts/merge_hc_bams',
-     		script_merge_hc_bams_runid     => "scripts/merge_hc_bams/$self->opts->{'run_id'}",
+     		script_merge_hc_bams_runid     => 'scripts/merge_hc_bams/' .$self->opts->{'run_id'},
             hc_bam                         => 'hc_bam',
-			hc_bam_runid                   => "hc_bam/$self->opts->{'run_id'}",
+			hc_bam_runid                   => 'hc_bam/' .$self->opts->{'run_id'},
             log                            => 'log',
             log_joint_calling_genotypes    => 'log/joint_calling_genotypes',
-			log_joint_calling_gt_runid     => "log/joint_calling_genotypes/$self->opts->{'run_id'}",
+			log_joint_calling_gt_runid     => 'log/joint_calling_genotypes/' .$self->opts->{'run_id'},
             log_haplotype_caller           => 'log/haplotype_caller',
-			log_haplotype_caller_run_id    => "log/haplotype_caller/$self->opts->{'run_id'}",
+			log_haplotype_caller_runid    => 'log/haplotype_caller/' .$self->opts->{'run_id'},
             log_cat_variants               => 'log/cat_variants',
             log_merge_hc_bams              => 'log/merge_hc_bams',
-			log_merge_hc_bams_runid        => "log/merge_hc_bams/$self->opts->{'run_id'}",
+			log_merge_hc_bams_runid        => 'log/merge_hc_bams/' .$self->opts->{'run_id'},
         },
         phaseIII => {
             scripts                     => 'scripts',
@@ -659,6 +659,9 @@ sub make_commandline {
             $input_bam_files, '-R', $self->opts->{'ref'},
             '-l INFO', '-nct', $nct, '-nt', $nt, $known_sites, $input_covariates, '--bqsrBAQGapOpenPenalty', 30, '-o',
             $output );
+		if ($data_type eq 'rna-seq') {
+			$params .= ' -U ALLOW_N_CIGAR_READS';
+		}
 
     }
     elsif ( $walker eq 'PrintReads' ) {
@@ -666,6 +669,9 @@ sub make_commandline {
             $params = join( ' ',
                 $input, '-R', $self->opts->{'ref'},
                 '-BQSR', $table, '-nct', $nct, '--disable_indel_quals', '-o', $output );
+			if ($data_type eq 'rna-seq'){
+				$params .= ' -U ALLOW_N_CIGAR_READS';
+			}
 
         }
         elsif ( $step eq 'split_bam_by_chr' ) {
@@ -754,6 +760,7 @@ sub make_commandline {
 		elsif ( $data_type eq 'rna-seq' ) {
 			$params_common =~ s/\-an InbreedingCoeff//;
 		}
+	
 
         if ( $mode eq 'snp' ) {
             $params = join( ' ', $params_common, '-mode SNP', '--maxGaussians 6' );

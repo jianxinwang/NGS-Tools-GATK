@@ -1,4 +1,4 @@
-#! /util/academic/perl/5.20.2/bin/perl
+#! /util/common/perl/5.26.1/bin/perl
 
 use strict;
 use Cwd;
@@ -11,7 +11,7 @@ sub magic_number_matches {
   open $FH, '<','_build/magicnum' or return 0;
   my $filenum = <$FH>;
   close $FH;
-  return $filenum == 940304;
+  return $filenum == 123369;
 }
 
 my $progname;
@@ -33,6 +33,7 @@ BEGIN {
     (
 
     );
+
 }
 
 close(*DATA) unless eof(*DATA); # ensure no open handles to this script
