@@ -3,8 +3,8 @@ do{ my $x = {
                              'Test::More' => 0
                            },
        'conflicts' => {},
-       'recommends' => {},
        'test_requires' => {},
-       'requires' => {}
+       'requires' => {},
+       'recommends' => {}
      };
 $x; }

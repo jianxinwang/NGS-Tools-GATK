@@ -822,6 +822,7 @@ sub run_base_recalibration {
 	            walker     => 'BaseRecalibrator',
 	            input      => "-I " . $input_bam,
 	            covariates => $self->covariates,
+				data_type  => $self->opts->{'data_type'},
 	            nct        => $gatk_options->{'nct'},
 	            nt         => 1,
 	            memory     => $gatk_options->{'mem'},
@@ -895,6 +896,7 @@ sub create_recalibrated_bams {
 	            output      => $output_file,
 	            table       => $self->recalibration_table->{$sample_id},
 	            sample_name => $sample_id,
+				data_type   => $self->opts->{'data_type'},
 	            nct         => $gatk_options->{'nct'},
 	            memory      => $gatk_options->{'mem'}
 	        );

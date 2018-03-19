@@ -21,7 +21,7 @@ use NGS::Tools::GATK;
 
 ### COMMAND LINE DEFAULT ARGUMENTS ################################################################
 our %opts = (
-    debug                      => 'N',
+    debug                      => 'No',
     user                       => $ENV{LOGNAME} || $ENV{USER} || getpwuid($<),
     qos                        => 'general-compute',
     partition                  => 'general-compute',
